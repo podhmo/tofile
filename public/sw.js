@@ -9,24 +9,40 @@ self.addEventListener("fetch", (event) => {
 });
 
 async function handleShare(request) {
-  const formData = await request.formData();
-  const text = formData.get("text") || formData.get("url") || formData.get("title") || "";
+  try {
+    const formData = await request.formData();
+    const text = formData.get("text") || formData.get("url") || formData.get("title") || "";
 
-  const filename = timestampFilename();
+    const filename = timestampFilename();
 
-  // Open or focus the client page and trigger download there
-  const clients = await self.clients.matchAll({ type: "window" });
-  const client = clients.find((c) => c.focused) || clients[0];
+    // Open or focus the client page and trigger download there
+    const clients = await self.clients.matchAll({ type: "window" });
+    const client = clients.find((c) => c.focused) || clients[0];
 
-  if (client) {
-    client.postMessage({ type: "download", text: String(text), filename });
+    if (client) {
+      client.postMessage({ type: "download", text: String(text), filename });
+      return Response.redirect("/", 303);
+    }
+
+    // No open client: open a new window and pass data via URL (fallback)
+    const params = new URLSearchParams({ text: String(text), filename });
+    await self.clients.openWindow(`/?${params.toString()}`);
+    return Response.redirect("/", 303);
+  } catch (err) {
+    const errorText = `Error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack ?? "(no stack)"}`;
+    const filename = `error-${timestampFilename().replace("note-", "")}`;
+
+    const clients = await self.clients.matchAll({ type: "window" });
+    const client = clients.find((c) => c.focused) || clients[0];
+    if (client) {
+      client.postMessage({ type: "download", text: errorText, filename });
+      return Response.redirect("/", 303);
+    }
+
+    const params = new URLSearchParams({ text: errorText, filename });
+    await self.clients.openWindow(`/?${params.toString()}`);
     return Response.redirect("/", 303);
   }
-
-  // No open client: open a new window and pass data via URL (fallback)
-  const params = new URLSearchParams({ text: String(text), filename });
-  await self.clients.openWindow(`/?${params.toString()}`);
-  return Response.redirect("/", 303);
 }
 
 function timestampFilename() {
