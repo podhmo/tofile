@@ -17,9 +17,6 @@
     h1 { font-size: 1.5rem; }
     p { line-height: 1.6; }
     .step { margin: 8px 0; padding: 8px 12px; background: #f5f5f5; border-radius: 6px; }
-    #status { margin-top: 24px; padding: 12px; border-radius: 6px; display: none; }
-    #status.ok { background: #e6f4ea; color: #1e7e34; }
-    #status.err { background: #fce8e6; color: #c5221f; }
   </style>
 </head>
 <body>
@@ -32,42 +29,9 @@
   <div class="step">③ 共有先に <strong>tofile</strong> を選ぶ</div>
   <div class="step">④ .txt ファイルが自動でダウンロードされる</div>
 
-  <div id="status"></div>
-
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js");
-    }
-
-    // Download triggered by Service Worker via postMessage
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      if (event.data?.type === "download") {
-        triggerDownload(event.data.text, event.data.filename);
-      }
-    });
-
-    // Fallback: download triggered via URL params (when page was opened fresh)
-    const params = new URLSearchParams(location.search);
-    if (params.has("text")) {
-      triggerDownload(params.get("text"), params.get("filename") || "note.txt");
-      history.replaceState(null, "", "/");
-    }
-
-    function triggerDownload(text, filename) {
-      const blob = new Blob([text], { type: "text/plain; charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-
-      const status = document.getElementById("status");
-      status.textContent = `✅ ダウンロードしました: ${filename}`;
-      status.className = "ok";
-      status.style.display = "block";
     }
   </script>
 </body>

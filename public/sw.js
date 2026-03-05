@@ -12,37 +12,37 @@ async function handleShare(request) {
   try {
     const formData = await request.formData();
     const text = formData.get("text") || formData.get("url") || formData.get("title") || "";
-
-    const filename = timestampFilename();
-
-    // Open or focus the client page and trigger download there
-    const clients = await self.clients.matchAll({ type: "window" });
-    const client = clients.find((c) => c.focused) || clients[0];
-
-    if (client) {
-      client.postMessage({ type: "download", text: String(text), filename });
-      return Response.redirect("/", 303);
-    }
-
-    // No open client: open a new window and pass data via URL (fallback)
-    const params = new URLSearchParams({ text: String(text), filename });
-    await self.clients.openWindow(`/?${params.toString()}`);
-    return Response.redirect("/", 303);
+    return makeDownloadPage(String(text), timestampFilename());
   } catch (err) {
     const errorText = `Error: ${err?.message ?? String(err)}\n\nStack:\n${err?.stack ?? "(no stack)"}`;
-    const filename = `error-${timestampFilename().replace("note-", "")}`;
-
-    const clients = await self.clients.matchAll({ type: "window" });
-    const client = clients.find((c) => c.focused) || clients[0];
-    if (client) {
-      client.postMessage({ type: "download", text: errorText, filename });
-      return Response.redirect("/", 303);
-    }
-
-    const params = new URLSearchParams({ text: errorText, filename });
-    await self.clients.openWindow(`/?${params.toString()}`);
-    return Response.redirect("/", 303);
+    return makeDownloadPage(errorText, `error-${timestampFilename().replace("note-", "")}`);
   }
+}
+
+// Return an HTML page that immediately downloads the file and redirects to /.
+// This avoids postMessage + redirect race conditions on repeated shares.
+function makeDownloadPage(text, filename) {
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>Downloading…</title></head>
+<body>
+<script>
+(function () {
+  var blob = new Blob([${JSON.stringify(text)}], { type: "text/plain; charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = ${JSON.stringify(filename)};
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  location.replace("/");
+})();
+</script>
+</body>
+</html>`;
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
 function timestampFilename() {
@@ -56,3 +56,4 @@ function timestampFilename() {
   const s = pad(now.getUTCSeconds());
   return `note-${y}${mo}${d}-${h}${mi}${s}.txt`;
 }
+
