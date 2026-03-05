@@ -1,7 +1,14 @@
 # tofile
 
-スマホから「送る」を使って選択されたテキストをテキストファイルとしてダウンロードするだけのworker。  
-Cloudflare Workers を使う。
+スマホの「共有（送る）」機能で選択したテキストを **.txt ファイルとしてダウンロード**する PWA。  
+Cloudflare Workers + Web Share Target API を使う。
+
+## 使い方
+
+1. このページをスマホのホーム画面に追加（PWA としてインストール）
+2. アプリや Web でテキストを選択 → 「共有」
+3. 共有先に **tofile** を選ぶ
+4. `.txt` ファイルが自動でダウンロードされる
 
 ## セットアップ
 
@@ -18,11 +25,9 @@ npm install
 
 ## デプロイ
 
-初回デプロイ前に Cloudflare へのログインが必要です。
-
 ```bash
 # Cloudflare にログイン（初回のみ）
-pnpm dlx wrangler login
+npx wrangler login
 
 # Workers へデプロイ
 npm run deploy
@@ -34,25 +39,7 @@ npm run deploy
 https://tofile.<your-subdomain>.workers.dev
 ```
 
-## API
-
-### `POST /`
-
-リクエストボディのテキストを `.txt` ファイルとしてダウンロードさせる。
-
-| クエリパラメータ | 説明 |
-| --- | --- |
-| `filename` | ダウンロードファイル名（省略時はタイムスタンプ: `note-YYYYMMDD-HHmmss.txt`） |
-
-```bash
-# ファイル名を指定してダウンロード
-curl -X POST "https://tofile.<your-subdomain>.workers.dev/?filename=memo" \
-  -d "今日のメモ内容" -O -J
-
-# ファイル名を省略（タイムスタンプ名になる）
-curl -X POST "https://tofile.<your-subdomain>.workers.dev/" \
-  -d "今日のメモ内容" -O -J
-```
+その URL をスマホで開き、**ホーム画面に追加**するとOS の共有シートに tofile が表示されるようになります。
 
 ## ローカル開発
 
@@ -61,7 +48,17 @@ npm run dev
 # → http://localhost:8787 で起動
 ```
 
-```bash
-# 動作確認
-curl -X POST "http://localhost:8787/?filename=test" -d "hello" -O -J
+## 仕組み
+
 ```
+スマホ「共有」
+  └─ POST /share (multipart/form-data)
+       └─ Service Worker が横取り
+            └─ テキストを Blob に変換 → <a download> でダウンロード
+                 └─ / にリダイレクト
+```
+
+- `public/manifest.json` — Web App Manifest (`share_target` 定義)
+- `public/sw.js` — Service Worker (Share Target 処理)
+- `public/index.html` — PWA シェル (SW 登録・ダウンロード処理)
+
