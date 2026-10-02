@@ -1,5 +1,8 @@
 # tofile
 
+> [!NOTE]
+> このリポジトリのコードは [podhmo/podhmo.github.io](https://github.com/podhmo/podhmo.github.io) の [`pwa/tofile`](https://github.com/podhmo/podhmo.github.io/tree/master/pwa/tofile) へ移動しました。
+
 スマホの「共有（送る）」機能で選択したテキストを **.txt ファイルとしてダウンロード**する PWA。  
 Cloudflare Workers + Web Share Target API を使う。
 
